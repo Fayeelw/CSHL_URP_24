@@ -1,3 +1,4 @@
+options(Seurat.object.assay.version = "v3")
 library(dplyr)
 library(Seurat)
 library(patchwork) 
@@ -11,13 +12,13 @@ install.packages("MAST")
 library(MAST)
 
 # Load data
-LYSM_C.data <- Read10X(data.dir="/Users/fayelynchwilliams/Desktop/cshl_project_24/LysM_CRE_data/control/") # data is expected in the .gz format
-LYSM_VP16.data <- Read10X(data.dir="/Users/fayelynchwilliams/Desktop/cshl_project_24/LysM_CRE_data/vp16/") # data is expected in the .gz format
+LYSM_C.data <- Read10X(data.dir="/Users/fayelynchwilliams/Desktop/CSHL_URP_24/LysM_CRE_data/control/") # data is expected in the .gz format
+LYSM_VP16.data <- Read10X(data.dir="/Users/fayelynchwilliams/Desktop/CSHL_URP_24/LysM_CRE_data/vp16/") # data is expected in the .gz format
 
 # Create Seurat objects
 
 LYSM_C <- CreateSeuratObject(counts = LYSM_C.data, project = "LYSM_C", min.cells = 3, min.features = 200)
-LYSM_VP16 <- CreateSeuratObject(counts = LYSM_VP16.data, project = "LYSM_C", min.cells = 3, min.features = 200)
+LYSM_VP16 <- CreateSeuratObject(counts = LYSM_VP16.data, project = "LYSM_VP16", min.cells = 3, min.features = 200)
 
 # Merge LYSM_C and LYSM_VP16
 merged <-  merge(LYSM_C, y = LYSM_VP16, add.cell.ids = c("LYSM_C", "LYSM_VP16")) # ids to identify as control v. vp16 (useful later)
@@ -32,10 +33,185 @@ vln_plot2 <- VlnPlot(merged, features = c("nCount_RNA", "nFeature_RNA", "percent
 
 ggsave("distribution_vlnplot.png", plot = vln_plot2, dpi = 300)
 
+# SCTransform
+merged <- SCTransform(merged, vars.to.regress = "percent.mt", verbose = FALSE)
+
+# Dimensionality reduction
+merged <- RunPCA(merged, verbose = FALSE)
+
+# Batch correction - harmony\
+merged$treatment <- factor(merged$orig.ident)
+merged <- merged %>%
+  RunHarmony(group.by.vars =  "treatment", assay.use="SCT", plot_convergence = TRUE)
+
+# Run UMAP
+ElbowPlot(merged, ndims = 50) # Check the inflection point
+merged <- RunUMAP(merged, dims = 1:30, verbose = FALSE, reduction='harmony')
+DimPlot(merged, label = TRUE)
+
+# Cluster and make another DimPlot() to visualise subsets
+merged <- FindNeighbors(merged, dims = 1:30, verbose = FALSE)
+merged <- FindClusters(merged, verbose = FALSE)
+DimPlot(merged, label = TRUE)
+
+# Find DE markers for every cluster compared to all remaining cells - report only positive markers
+merged <- PrepSCTFindMarkers(merged)
+merged.markers <- FindAllMarkers(merged, only.pos = TRUE)
+
+# Arrange DE cluster markers in descending order based on gene expression levels
+cluster_markers <- merged.markers %>%
+  group_by(cluster) %>%
+  dplyr::filter(avg_log2FC > 1) %>%
+  arrange(cluster, desc(avg_log2FC))
+
+write.csv(cluster_markers, "cluster_markers.csv")
+
+# Use a publicly available list of MOUSE marker genes to manually annotate clusters
+cluster0 <- cluster_markers[cluster_markers$cluster == "0", ] # M2 macrophage (Nos2, Arg1)
+print(cluster0, n = 100)
+cluster1 <- cluster_markers[cluster_markers$cluster == "1", ] # CD8 T cell (Gzmk, Tcrg-C2, Cd8b1/Cd8a, Themis)
+print(cluster1, n = 100)
+cluster2 <- cluster_markers[cluster_markers$cluster == "2", ] # Th2 CD4 T cell (Cd4, Cd40Ig, Il4)
+print(cluster2, n = 100)
+cluster3 <- cluster_markers[cluster_markers$cluster == "3", ] # Developing CD8  T cell 
+print(cluster3, n = 100)
+cluster4 <- cluster_markers[cluster_markers$cluster == "4", ] # CD8 T cell
+print(cluster4, n = 100)
+cluster5 <- cluster_markers[cluster_markers$cluster == "5", ] # Treg 
+print(cluster5, n = 100)
+cluster6 <- cluster_markers[cluster_markers$cluster == "6", ] # NK cell 
+print(cluster6, n = 100)
+cluster7 <- cluster_markers[cluster_markers$cluster == "7", ] # M2 Macrophage
+print(cluster7, n = 100)
+cluster8 <- cluster_markers[cluster_markers$cluster == "8", ] # DC (Cd74 + H2- = Ag presentation; Mgl2 - Ag recognition; Cd209a/e)
+print(cluster8, n = 100)
+cluster9 <- cluster_markers[cluster_markers$cluster == "9", ] # Neutrophil 
+print(cluster9, n = 100)
+cluster10 <- cluster_markers[cluster_markers$cluster == "10", ] # NK cell
+print(cluster10, n = 100)
+cluster11 <- cluster_markers[cluster_markers$cluster == "11", ] # M2 macrophage
+print(cluster11, n = 100)
+cluster12 <- cluster_markers[cluster_markers$cluster == "12", ] # Monocyte 
+print(cluster12, n = 100)
+cluster13 <- cluster_markers[cluster_markers$cluster == "13", ] # T cell  
+print(cluster13, n = 100)
+cluster14 <- cluster_markers[cluster_markers$cluster == "14", ] # Immature B cell 
+print(cluster14, n = 100)
+cluster15 <- cluster_markers[cluster_markers$cluster == "15", ] # Th17 CD4 T cell 
+print(cluster15, n = 100)
+cluster16 <- cluster_markers[cluster_markers$cluster == "16", ] # Proliferating cell
+print(cluster16, n = 100)
+cluster17 <- cluster_markers[cluster_markers$cluster == "17", ] # cDC1
+print(cluster17, n = 100)
+cluster18 <- cluster_markers[cluster_markers$cluster == "18", ] #pDC
+print(cluster18, n = 100)
+cluster19 <- cluster_markers[cluster_markers$cluster == "19", ] # Plasma cell 
+print(cluster19, n = 100)
+
+# Dotplot to check markers
+DotPlot(merged, features = c("Cd68", "H2-Ab1", "Cd74", "Cd3e", "Cd8a", "Cd4", "Klrg1", "Prf1"))
+
+# Define cluster names based on marker genes 
+cluster_id <- c("M2 Macrophage", "CD8 T cell", "Th2 CD4 T cell", "Developing CD8 T cell", "CD8 T cell", "Treg", "NK Cell", "M2 Macrophage", "DC", "Neutrophil", "NK Cell", "M2 Macrophage", "Monocyte", "T cell", "Immature B cell", "Th17 CD4 T Cell", "Proliferating Cell", "cDC1", "pDC", "Plasma Cell")
+names(cluster_id) <- levels(merged)
+merged <- RenameIdents(merged, cluster_id)
+
+# Visualise annotations with a DimPlot()
+DimPlot(merged, reduction = "umap", label = TRUE, pt.size = 0.5) + NoLegend()
+
+# The above is comparing clusters to one another - now need to perform DE analysis between WT and VP16
+
+# Set the cell identity/classification equal to the metadata column orgid.ident - this identity class allows VP16/C classes to be distinguished
+Idents(merged) <- "treatment"
+
+# Find DE markers between LYSM_VP16 and LYSM_C across all clusters
+de_genes <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.thresold = 0.25) 
+de_genes <- de_genes %>% arrange(desc(avg_log2FC))
+
+# Find DE markers between LYSM_VP16 and LYSM_C within each cluster
+cluster0 <- "M2 Macrophage"
+de_genes_per_cluster0 <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.threshold = 0.25, assay = "RNA", slot = "data", subgroup = cluster0)
+de_genes_per_cluster0 <- de_genes_per_cluster %>% arrange(desc(avg_log2FC))
+
+cluster1 <- "CD8 T Cell"
+de_genes_per_cluster1 <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.threshold = 0.25, assay = "RNA", slot = "data", subgroup = cluster0)
+de_genes_per_cluster2 <- de_genes_per_cluster %>% arrange(desc(avg_log2FC))
+
+cluster2 <- "Th2 CD4 T cell"
+de_genes_per_cluster2 <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.threshold = 0.25, assay = "RNA", slot = "data", subgroup = cluster0)
+de_genes_per_cluster2 <- de_genes_per_cluster %>% arrange(desc(avg_log2FC))
+
+cluster3 <- "Developing CD8 T cell"
+de_genes_per_cluster0 <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.threshold = 0.25, assay = "RNA", slot = "data", subgroup = cluster0)
+de_genes_per_cluster0 <- de_genes_per_cluster %>% arrange(desc(avg_log2FC))
+
+cluster4 <- "CD8 T cell"
+de_genes_per_cluster4 <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.threshold = 0.25, assay = "RNA", slot = "data", subgroup = cluster0)
+de_genes_per_cluster4 <- de_genes_per_cluster %>% arrange(desc(avg_log2FC))
+
+cluster5 <- "Treg"
+de_genes_per_cluster5 <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.threshold = 0.25, assay = "RNA", slot = "data", subgroup = cluster0)
+de_genes_per_cluster5 <- de_genes_per_cluster %>% arrange(desc(avg_log2FC))
+
+cluster6 <- "NK Cell"
+de_genes_per_cluster6 <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.threshold = 0.25, assay = "RNA", slot = "data", subgroup = cluster0)
+de_genes_per_cluster6 <- de_genes_per_cluster %>% arrange(desc(avg_log2FC))
+
+cluster7 <- "M2 Macrophage"
+de_genes_per_cluster7 <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.threshold = 0.25, assay = "RNA", slot = "data", subgroup = cluster0)
+de_genes_per_cluster7 <- de_genes_per_cluster %>% arrange(desc(avg_log2FC))
+
+cluster8 <- "DC"
+de_genes_per_cluster8 <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.threshold = 0.25, assay = "RNA", slot = "data", subgroup = cluster0)
+de_genes_per_cluster8 <- de_genes_per_cluster %>% arrange(desc(avg_log2FC))
+
+cluster9 <- "Neutrophil"
+de_genes_per_cluster9 <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.threshold = 0.25, assay = "RNA", slot = "data", subgroup = cluster0)
+de_genes_per_cluster9 <- de_genes_per_cluster %>% arrange(desc(avg_log2FC))
+
+cluster10 <- "NK Cell"
+de_genes_per_cluster10 <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.threshold = 0.25, assay = "RNA", slot = "data", subgroup = cluster0)
+de_genes_per_cluster10 <- de_genes_per_cluster %>% arrange(desc(avg_log2FC))
+
+cluster11 <- "M2 Macrophage"
+de_genes_per_cluster11 <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.threshold = 0.25, assay = "RNA", slot = "data", subgroup = cluster0)
+de_genes_per_cluster11 <- de_genes_per_cluster %>% arrange(desc(avg_log2FC))
+
+cluster12 <- "Monocyte"
+de_genes_per_cluster12 <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.threshold = 0.25, assay = "RNA", slot = "data", subgroup = cluster0)
+de_genes_per_cluster12 <- de_genes_per_cluster %>% arrange(desc(avg_log2FC))
+
+cluster13 <- "T Cell"
+de_genes_per_cluster13 <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.threshold = 0.25, assay = "RNA", slot = "data", subgroup = cluster0)
+de_genes_per_cluster13 <- de_genes_per_cluster %>% arrange(desc(avg_log2FC))
+
+cluster14 <- "Immature B Cell"
+de_genes_per_cluster14 <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.threshold = 0.25, assay = "RNA", slot = "data", subgroup = cluster0)
+de_genes_per_cluster14 <- de_genes_per_cluster %>% arrange(desc(avg_log2FC))
+
+cluster15 <- "Th17 CD4 T Cell"
+de_genes_per_cluster15 <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.threshold = 0.25, assay = "RNA", slot = "data", subgroup = cluster0)
+de_genes_per_cluster15 <- de_genes_per_cluster %>% arrange(desc(avg_log2FC))
+
+cluster16 <- "Proliferating Cell"
+de_genes_per_cluster16 <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.threshold = 0.25, assay = "RNA", slot = "data", subgroup = cluster0)
+de_genes_per_cluster16 <- de_genes_per_cluster %>% arrange(desc(avg_log2FC))
+
+cluster17 <- "cDC1"
+de_genes_per_cluster17 <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.threshold = 0.25, assay = "RNA", slot = "data", subgroup = cluster0)
+de_genes_per_cluster17 <- de_genes_per_cluster %>% arrange(desc(avg_log2FC))
+
+cluster0 <- "pDC"
+de_genes_per_cluster18 <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.threshold = 0.25, assay = "RNA", slot = "data", subgroup = cluster0)
+de_genes_per_cluster18 <- de_genes_per_cluster %>% arrange(desc(avg_log2FC))
+
+cluster0 <- "Plasma Cell"
+de_genes_per_cluster19 <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.threshold = 0.25, assay = "RNA", slot = "data", subgroup = cluster0)
+de_genes_per_cluster19 <- de_genes_per_cluster %>% arrange(desc(avg_log2FC))
+
+# Gene level analysis - plot how key changes are changing with treatment
 
 
 
-
-
-
+# Cell Chat/Nichenet - evaluate how cell-cell communication changes with treatment
 
