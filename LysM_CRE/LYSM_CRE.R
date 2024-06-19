@@ -112,9 +112,9 @@ print(cluster19, n = 100)
 DotPlot(merged, features = c("Cd68", "H2-Ab1", "Cd74", "Cd3e", "Cd8a", "Cd4", "Klrg1", "Prf1"))
 
 # Define cluster names based on marker genes 
-cluster_id <- c("M2 Macrophage", "CD8 T cell", "Th2 CD4 T cell", "Developing CD8 T cell", "CD8 T cell", "Treg", "NK Cell", "M2 Macrophage", "DC", "Neutrophil", "NK Cell", "M2 Macrophage", "Monocyte", "T cell", "Immature B cell", "Th17 CD4 T Cell", "Proliferating Cell", "cDC1", "pDC", "Plasma Cell")
-names(cluster_id) <- levels(merged)
-merged <- RenameIdents(merged, cluster_id)
+cluster_annotation <- c("M2 Macrophage", "CD8 T cell", "Th2 CD4 T cell", "Developing CD8 T cell", "CD8 T cell", "Treg", "NK Cell", "M2 Macrophage", "DC", "Neutrophil", "NK Cell", "M2 Macrophage", "Monocyte", "T cell", "Immature B cell", "Th17 CD4 T Cell", "Proliferating Cell", "cDC1", "pDC", "Plasma Cell")
+names(cluster_annotation) <- levels(merged)
+merged <- RenameIdents(merged, cluster_annotation)
 
 # Visualise annotations with a DimPlot()
 DimPlot(merged, reduction = "umap", label = TRUE, pt.size = 0.5) + NoLegend()
@@ -133,11 +133,11 @@ de_genes <- de_genes %>% arrange(desc(avg_log2FC))
 deg_list <- list()
 
 # Loop through each cluster
-for (cluster_id in levels(merged$seurat_clusters)) {
+for (cluster_annotation in levels(merged$seurat_clusters)) {
   # When subsetting by cluster, ensure that the active identity class is set to 'seurat_clusters' before subsetting. 
   Idents(merged) <- "seurat_clusters"
   # Subset the seurat object to the current cluster
-  cluster_subset <- subset(merged, idents = cluster_id)
+  cluster_subset <- subset(merged, idents = cluster_annotation)
   
   # Restore the active identity to 'treatment' for DE analysis
   Idents(cluster_subset) <- "treatment"
@@ -151,42 +151,17 @@ for (cluster_id in levels(merged$seurat_clusters)) {
   )
   
   # Store the DEGs in the list with the cluster ID as the name 
-  deg_list[[cluster_id]] <- degs
+  deg_list[[cluster_annotation]] <- degs
 }
 print(deg_list)
 
 # Export to csv
-for (cluster_id in names(deg_list)) {       
-  write.csv(deg_list[[cluster_id]], file = paste0("DEGs_cluster_", cluster_id, ".csv"))
+for (cluster_annotation in names(deg_list)) {       
+  write.csv(deg_list[[cluster_annotation]], file = paste0("DEGs_cluster_", cluster_annotation, ".csv"))
 }
 
 # Gene level analysis - plot how key changes are changing with treatment
 
-library(readr)
-DEGs_cluster_0 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
-DEGs_cluster_1 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_1.csv")
-DEGs_cluster_2 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_2.csv")
-DEGs_cluster_3 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_3.csv")
-DEGs_cluster_4 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_4.csv")
-DEGs_cluster_5 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_5.csv")
-DEGs_cluster_6 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_6.csv")
-DEGs_cluster_7 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_7.csv")
-DEGs_cluster_8 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_8.csv")
-DEGs_cluster_9 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_9.csv")
-DEGs_cluster_10 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_10.csv")
-DEGs_cluster_11 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_11.csv")
-DEGs_cluster_12 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_12.csv")
-DEGs_cluster_13 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_13.csv")
-DEGs_cluster_14 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_14.csv")
-DEGs_cluster_15 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_15.csv")
-DEGs_cluster_16 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_16.csv")
-DEGs_cluster_17 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_17.csv")
-DEGs_cluster_18 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_18.csv")
-DEGs_cluster_19 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_19.csv")
-
-
-# Example filtering by adjusted p-value (e.g., FDR < 0.05) and log fold change threshold (abs(log2FC) > 1)
-significant_genes <- subset(cluster0, padj < 0.05 & abs(avg_log2FC) > 1)
 
 
 # Cell Chat/Nichenet - evaluate how cell-cell communication changes with treatment
