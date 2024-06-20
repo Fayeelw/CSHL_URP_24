@@ -45,14 +45,16 @@ merged <- merged %>%
   RunHarmony(group.by.vars =  "treatment", assay.use="SCT", plot_convergence = TRUE)
 
 # Run UMAP
-ElbowPlot(merged, ndims = 50) # Check the inflection point
+elbowplot1 <- ElbowPlot(merged, ndims = 50) # Check the inflection point
+ggsave("elbowplot.png", plot = elbowplot1, dpi = 300)
 merged <- RunUMAP(merged, dims = 1:30, verbose = FALSE, reduction='harmony')
 DimPlot(merged, label = TRUE)
 
 # Cluster and make another DimPlot() to visualise subsets
 merged <- FindNeighbors(merged, dims = 1:30, verbose = FALSE)
 merged <- FindClusters(merged, verbose = FALSE)
-DimPlot(merged, label = TRUE)
+dimplot1 <- DimPlot(merged, label = TRUE)
+ggsave("cluster_dimplot.png", plot = dimplot1, dpi = 300, width = 10, height = 9)
 
 # Find DE markers for every cluster compared to all remaining cells - report only positive markers
 merged <- PrepSCTFindMarkers(merged)
@@ -71,9 +73,9 @@ cluster0 <- cluster_markers[cluster_markers$cluster == "0", ] # M2 macrophage (N
 print(cluster0, n = 100)
 cluster1 <- cluster_markers[cluster_markers$cluster == "1", ] # CD8 T cell (Gzmk, Tcrg-C2, Cd8b1/Cd8a, Themis)
 print(cluster1, n = 100)
-cluster2 <- cluster_markers[cluster_markers$cluster == "2", ] # Th2 CD4 T cell (Cd4, Cd40Ig, Il4)
+cluster2 <- cluster_markers[cluster_markers$cluster == "2", ] # CD4 T cell (Cd4, Cd40Ig, Il4)
 print(cluster2, n = 100)
-cluster3 <- cluster_markers[cluster_markers$cluster == "3", ] # Developing CD8  T cell 
+cluster3 <- cluster_markers[cluster_markers$cluster == "3", ] # CD8 T cell 
 print(cluster3, n = 100)
 cluster4 <- cluster_markers[cluster_markers$cluster == "4", ] # CD8 T cell
 print(cluster4, n = 100)
@@ -81,7 +83,7 @@ cluster5 <- cluster_markers[cluster_markers$cluster == "5", ] # Treg
 print(cluster5, n = 100)
 cluster6 <- cluster_markers[cluster_markers$cluster == "6", ] # NK cell 
 print(cluster6, n = 100)
-cluster7 <- cluster_markers[cluster_markers$cluster == "7", ] # M2 Macrophage
+cluster7 <- cluster_markers[cluster_markers$cluster == "7", ] # M1 Macrophage
 print(cluster7, n = 100)
 cluster8 <- cluster_markers[cluster_markers$cluster == "8", ] # DC (Cd74 + H2- = Ag presentation; Mgl2 - Ag recognition; Cd209a/e)
 print(cluster8, n = 100)
@@ -93,11 +95,11 @@ cluster11 <- cluster_markers[cluster_markers$cluster == "11", ] # M2 macrophage
 print(cluster11, n = 100)
 cluster12 <- cluster_markers[cluster_markers$cluster == "12", ] # Monocyte 
 print(cluster12, n = 100)
-cluster13 <- cluster_markers[cluster_markers$cluster == "13", ] # T cell  
+cluster13 <- cluster_markers[cluster_markers$cluster == "13", ] # CD8 T cell  
 print(cluster13, n = 100)
 cluster14 <- cluster_markers[cluster_markers$cluster == "14", ] # Immature B cell 
 print(cluster14, n = 100)
-cluster15 <- cluster_markers[cluster_markers$cluster == "15", ] # Th17 CD4 T cell 
+cluster15 <- cluster_markers[cluster_markers$cluster == "15", ] # Th17 
 print(cluster15, n = 100)
 cluster16 <- cluster_markers[cluster_markers$cluster == "16", ] # Proliferating cell
 print(cluster16, n = 100)
@@ -109,28 +111,30 @@ cluster19 <- cluster_markers[cluster_markers$cluster == "19", ] # Plasma cell
 print(cluster19, n = 100)
 
 # Dotplot to check markers
-DotPlot(merged, features = c("Cd68", "H2-Ab1", "Cd74", "Cd3e", "Cd8a", "Cd4", "Klrg1", "Prf1"))
+dotplot1 <- DotPlot(merged, features = c("Cd68", "H2-Ab1", "Cd74", "Cd3e", "Cd8a", "Cd4", "Klrg1", "Prf1", "Eomes", "Arg1"))
+ggsave("cluster_dotplot.png", plot = dotplot1, width = 10, height = 9)
 
 # Define cluster names based on marker genes 
-cluster_annotation <- c("M2 Macrophage", "CD8 T cell", "Th2 CD4 T cell", "Developing CD8 T cell", "CD8 T cell", "Treg", "NK Cell", "M2 Macrophage", "DC", "Neutrophil", "NK Cell", "M2 Macrophage", "Monocyte", "T cell", "Immature B cell", "Th17 CD4 T Cell", "Proliferating Cell", "cDC1", "pDC", "Plasma Cell")
+cluster_annotation <- c("M2 macrophage", "CD8 T cell", "CD4 T cell", "CD8 T cell", "CD8 T cell", "Treg", "NK cell", "M1 macrophage", "DC", "Neutrophil", "NK cell", "M2 macrophage", "Monocyte", "CD8 T cell", "Immature B cell", "Th17", "Proliferating cell", "cDC1", "pDC", "Plasma cell")
 names(cluster_annotation) <- levels(merged)
 merged <- RenameIdents(merged, cluster_annotation)
+merged$cell_type <- Idents(merged) ############!!!!!!!!
 
 # Visualise annotations with a DimPlot()
-DimPlot(merged, reduction = "umap", label = TRUE, pt.size = 0.5) + NoLegend()
+dimplot2 <- DimPlot(merged, reduction = "umap", label = TRUE, pt.size = 0.5) + NoLegend()
+ggsave("annotated_dimplot.png", plot = dimplot2, width = 10, height = 9)
 
 # The above is comparing clusters to one another - now need to perform DE analysis between WT and VP16
 
-# Set the cell identity/classification equal to the metadata column orgid.ident - this identity class allows VP16/C classes to be distinguished
+# Set the cell identity/classification equal to the metadata column orig.ident - this identity class allows VP16/C classes to be distinguished
 Idents(merged) <- "treatment"
 
 # Find DE markers between LYSM_VP16 and LYSM_C across all clusters
+
 de_genes <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.pct = 0.25, logfc.thresold = 0.25) 
 de_genes <- de_genes %>% arrange(desc(avg_log2FC))
 
 # Find DE markers between LYSM_VP16 and LYSM_C within each cluster
-merged$cell_type <- Idents(merged) ############!!!!!!!!
-
 deg_list <- list()
 
 # Loop through each cluster
@@ -164,26 +168,22 @@ for (cell_type in names(deg_list)) {
 }
 
 # Manual gene level analysis - use the csv files to make plots to deduce different gene expression changes 
-DEGs_cluster_0 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
-DEGs_cluster_1 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
-DEGs_cluster_2 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
-DEGs_cluster_3 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
-DEGs_cluster_4 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
-DEGs_cluster_5 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
-DEGs_cluster_6 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
-DEGs_cluster_7 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
-DEGs_cluster_8 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
-DEGs_cluster_9 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
-DEGs_cluster_10 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
-DEGs_cluster_11 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
-DEGs_cluster_12 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
-DEGs_cluster_13 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
-DEGs_cluster_14 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
-DEGs_cluster_15 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
-DEGs_cluster_16 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
-DEGs_cluster_17 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
-DEGs_cluster_18 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
-DEGs_cluster_19 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
+DEGs_cluster_CD8T <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_CD8 T cell.csv")
+DEGs_cluster_cDC1 <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_cDC1.csv")
+DEGs_cluster_DC <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_DC.csv")
+DEGs_cluster_developing_CD8 <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_Developing CD8 T cell.csv")
+DEGs_cluster_immature_B <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_Immature B cell.csv")
+DEGs_cluster_M2_macrophage <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_M2 Macrophage.csv")
+DEGs_cluster_monocyte <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_Monocyte.csv")
+DEGs_cluster_neutrophil <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_Neutrophil.csv")
+DEGs_cluster_nk <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_NK Cell.csv")
+DEGs_cluster_pDC <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_pDC.csv")
+DEGs_cluster_plasma_cell <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_Plasma Cell.csv")
+DEGs_cluster_proliferating_cell <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_Proliferating Cell.csv")
+DEGs_cluster_T_cell <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_T cell.csv")
+DEGs_cluster_Th2_cell <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_Th2 CD4 T cell.csv")
+DEGs_cluster_Th17_cell <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_Th17 CD4 T cell.csv")
+DEGs_cluster_treg <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_Treg.csv")
 
 # Cell Chat/Nichenet - evaluate how cell-cell communication changes with treatment
 
