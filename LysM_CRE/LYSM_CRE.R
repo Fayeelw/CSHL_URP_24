@@ -129,15 +129,16 @@ de_genes <- FindMarkers(merged, ident.1 = "LYSM_VP16", ident.2 = "LYSM_C", min.p
 de_genes <- de_genes %>% arrange(desc(avg_log2FC))
 
 # Find DE markers between LYSM_VP16 and LYSM_C within each cluster
+merged$cell_type <- Idents(merged) ############!!!!!!!!
 
 deg_list <- list()
 
 # Loop through each cluster
-for (cluster_annotation in levels(merged$seurat_clusters)) {
-  # When subsetting by cluster, ensure that the active identity class is set to 'seurat_clusters' before subsetting. 
-  Idents(merged) <- "seurat_clusters"
+for (cluster_id in levels(merged$cell_type)) {
+  # When subsetting by cluster, ensure that the active identity class is set to 'cell_type' before subsetting. 
+  Idents(merged) <- "cell_type"
   # Subset the seurat object to the current cluster
-  cluster_subset <- subset(merged, idents = cluster_annotation)
+  cluster_subset <- subset(merged, idents = cluster_id)
   
   # Restore the active identity to 'treatment' for DE analysis
   Idents(cluster_subset) <- "treatment"
@@ -162,6 +163,7 @@ for (cluster_annotation in names(deg_list)) {
 
 # Gene level analysis - plot how key changes are changing with treatment
 
+#RenameIdents()
 
 
 # Cell Chat/Nichenet - evaluate how cell-cell communication changes with treatment
