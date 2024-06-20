@@ -134,17 +134,17 @@ merged$cell_type <- Idents(merged) ############!!!!!!!!
 deg_list <- list()
 
 # Loop through each cluster
-for (cluster_id in levels(merged$cell_type)) {
+for (cell_type in levels(merged$cell_type)) {
   # When subsetting by cluster, ensure that the active identity class is set to 'cell_type' before subsetting. 
   Idents(merged) <- "cell_type"
-  # Subset the seurat object to the current cluster
-  cluster_subset <- subset(merged, idents = cluster_id)
+  # Subset the seurat object to the current cell_type
+  cell_subset <- subset(merged, idents = cell_type)
   
   # Restore the active identity to 'treatment' for DE analysis
-  Idents(cluster_subset) <- "treatment"
+  Idents(cell_subset) <- "treatment"
   # Perform differential expression analysis between LYSM_VP16 and LYSM_C
   degs <- FindMarkers(
-    object = cluster_subset,
+    object = cell_subset,
     ident.1 = "LYSM_VP16",
     ident.2 = "LYSM_C",
     group.by = "treatment",
@@ -152,19 +152,38 @@ for (cluster_id in levels(merged$cell_type)) {
   )
   
   # Store the DEGs in the list with the cluster ID as the name 
-  deg_list[[cluster_annotation]] <- degs
+  deg_list[[cell_type]] <- degs
 }
 print(deg_list)
 
 # Export to csv
-for (cluster_annotation in names(deg_list)) {       
-  write.csv(deg_list[[cluster_annotation]], file = paste0("DEGs_cluster_", cluster_annotation, ".csv"))
+p_val_threshold <- 0.05
+for (cell_type in names(deg_list)) {       
+  significant_degs <- deg_list[[cell_type]][deg_list[[cell_type]]$p_val < p_val_threshold, ]
+  write.csv(significant_degs, file = paste0("DEGs_cluster_", cell_type, ".csv"))
 }
 
-# Gene level analysis - plot how key changes are changing with treatment
-
-#RenameIdents()
-
+# Manual gene level analysis - use the csv files to make plots to deduce different gene expression changes 
+DEGs_cluster_0 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
+DEGs_cluster_1 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
+DEGs_cluster_2 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
+DEGs_cluster_3 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
+DEGs_cluster_4 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
+DEGs_cluster_5 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
+DEGs_cluster_6 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
+DEGs_cluster_7 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
+DEGs_cluster_8 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
+DEGs_cluster_9 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
+DEGs_cluster_10 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
+DEGs_cluster_11 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
+DEGs_cluster_12 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
+DEGs_cluster_13 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
+DEGs_cluster_14 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
+DEGs_cluster_15 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
+DEGs_cluster_16 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
+DEGs_cluster_17 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
+DEGs_cluster_18 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
+DEGs_cluster_19 <- read_csv("Treatment_DEGs_per_cluster/DEGs_cluster_0.csv")
 
 # Cell Chat/Nichenet - evaluate how cell-cell communication changes with treatment
 
