@@ -10,6 +10,7 @@ install.packages("harmony")
 library(harmony)
 install.packages("MAST")
 library(MAST)
+library(readr)
 
 # Load data
 LYSM_C.data <- Read10X(data.dir="/Users/fayelynchwilliams/Desktop/CSHL_URP_24/LysM_CRE_data/control/") # data is expected in the .gz format
@@ -115,10 +116,11 @@ dotplot1 <- DotPlot(merged, features = c("Cd68", "H2-Ab1", "Cd74", "Cd3e", "Cd8a
 ggsave("cluster_dotplot.png", plot = dotplot1, width = 10, height = 9)
 
 # Define cluster names based on marker genes 
+Idents(merged) <- "seurat_clusters"
 cluster_annotation <- c("M2 macrophage", "CD8 T cell", "CD4 T cell", "CD8 T cell", "CD8 T cell", "Treg", "NK cell", "M1 macrophage", "DC", "Neutrophil", "NK cell", "M2 macrophage", "Monocyte", "CD8 T cell", "Immature B cell", "Th17", "Proliferating cell", "cDC1", "pDC", "Plasma cell")
 names(cluster_annotation) <- levels(merged)
 merged <- RenameIdents(merged, cluster_annotation)
-merged$cell_type <- Idents(merged) ############!!!!!!!!
+merged$cell_type <- Idents(merged) 
 
 # Visualise annotations with a DimPlot()
 dimplot2 <- DimPlot(merged, reduction = "umap", label = TRUE, pt.size = 0.5) + NoLegend()
@@ -168,11 +170,12 @@ for (cell_type in names(deg_list)) {
 }
 
 # Manual gene level analysis - use the csv files to make plots to deduce different gene expression changes 
-DEGs_cluster_CD8T <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_CD8 T cell.csv")
+DEGs_cluster_CD4_Tcell <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_CD4 T cell.csv")
+DEGs_cluster_CD8Tcell <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_CD8 T cell.csv")
 DEGs_cluster_cDC1 <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_cDC1.csv")
 DEGs_cluster_DC <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_DC.csv")
-DEGs_cluster_developing_CD8 <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_Developing CD8 T cell.csv")
 DEGs_cluster_immature_B <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_Immature B cell.csv")
+DEGs_cluster_M1_macrophage <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_M1 Macrophage.csv")
 DEGs_cluster_M2_macrophage <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_M2 Macrophage.csv")
 DEGs_cluster_monocyte <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_Monocyte.csv")
 DEGs_cluster_neutrophil <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_Neutrophil.csv")
@@ -180,9 +183,7 @@ DEGs_cluster_nk <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_NK Cell.c
 DEGs_cluster_pDC <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_pDC.csv")
 DEGs_cluster_plasma_cell <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_Plasma Cell.csv")
 DEGs_cluster_proliferating_cell <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_Proliferating Cell.csv")
-DEGs_cluster_T_cell <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_T cell.csv")
-DEGs_cluster_Th2_cell <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_Th2 CD4 T cell.csv")
-DEGs_cluster_Th17_cell <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_Th17 CD4 T cell.csv")
+DEGs_cluster_Th17_cell <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_Th17.csv")
 DEGs_cluster_treg <- read_csv("Treatment_DEGs_per_cell_type/DEGs_cluster_Treg.csv")
 
 # Cell Chat/Nichenet - evaluate how cell-cell communication changes with treatment
